@@ -48,7 +48,7 @@ def callback_handler(call):
         elif call.data.startswith("platform_"):
             platform = call.data.split("_")[1]
             user_pending_posts[chat_id] = {"platform": platform}
-            bot.edit_message_text(f"Send details in format: Username:Price:Details", chat_id, call.message.message_id)
+            bot.edit_message_text(f"Send details in format: Username:Price:Note", chat_id, call.message.message_id)
             bot.register_next_step_handler(call.message, process_details)
 
         elif call.data.startswith("approve_"):
