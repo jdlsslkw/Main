@@ -55,7 +55,7 @@ def callback_handler(call):
             target_id = int(call.data.split("_")[1])
             post = user_pending_posts.get(target_id)
             if post:
-                msg = f"Username: @{post['username']}\nPrice: {post['price']}\nDetails: {post['details']}"
+                msg = f"Username: @{post['username']}\nPrice: {post['price']}\nNote: {post['details']}"
                 markup = types.InlineKeyboardMarkup()
                 markup.add(types.InlineKeyboardButton("Contact Seller", url=f"https://t.me/{post['sender_username']}"))
                 markup.add(types.InlineKeyboardButton("Trusted Admin (TA)", callback_data="show_ta"))
@@ -97,7 +97,7 @@ def process_details(message):
         markup.add(types.InlineKeyboardButton("Approve", callback_data=f"approve_{chat_id}"))
         markup.add(types.InlineKeyboardButton("Reject", callback_data="reject"))
         
-        admin_msg = f"New Post Request:\nPlatform: {user_pending_posts[chat_id]['platform']}\nUsername: @{username}\nPrice: {price}\nDetails: {details}\nFrom: @{message.from_user.username}"
+        admin_msg = f"New Post Request:\nPlatform: {user_pending_posts[chat_id]['platform']}\nUsername: @{username}\nPrice: {price}\nNote: {details}\nFrom: @{message.from_user.username}"
         bot.send_message(ADMIN_ID, admin_msg, reply_markup=markup)
         bot.reply_to(message, "Your post is sent to admin.")
     except:
