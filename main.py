@@ -21,7 +21,6 @@ user_pending_posts = {}
 def get_main_menu():
     markup = types.InlineKeyboardMarkup()
     markup.add(types.InlineKeyboardButton("Post New Account", callback_data="select_platform"))
-    markup.add(types.InlineKeyboardButton("Trusted Middlemen", callback_data="show_mm"))
     return markup
 
 def get_platform_menu():
@@ -34,18 +33,14 @@ def get_platform_menu():
 
 @bot.message_handler(commands=['start'])
 def start(message):
-    bot.send_message(message.chat.id, "Welcome to the Bot!", reply_markup=get_main_menu())
+    bot.send_message(message.chat.id, "Welcome! Choose an option:", reply_markup=get_main_menu())
 
 @bot.callback_query_handler(func=lambda call: True)
 def callback_handler(call):
     chat_id = call.message.chat.id
-    
     try:
         if call.data == "back_to_main":
             bot.edit_message_text("Welcome. Select an option:", chat_id, call.message.message_id, reply_markup=get_main_menu())
-        
-        elif call.data == "show_mm":
-            bot.answer_callback_query(call.id, "List of Trusted Middlemen coming soon!")
         
         elif call.data == "select_platform":
             bot.edit_message_text("Select the platform:", chat_id, call.message.message_id, reply_markup=get_platform_menu())
@@ -53,52 +48,60 @@ def callback_handler(call):
         elif call.data.startswith("platform_"):
             platform = call.data.split("_")[1]
             user_pending_posts[chat_id] = {"platform": platform}
-            bot.edit_message_text(f"Platform: {platform}.\nSend details: Username:Price:Details", chat_id, call.message.message_id)
+            bot.edit_message_text(f"Send details in format: Username:Price:Details", chat_id, call.message.message_id)
             bot.register_next_step_handler(call.message, process_details)
 
         elif call.data.startswith("approve_"):
             target_id = int(call.data.split("_")[1])
             post = user_pending_posts.get(target_id)
             if post:
-                msg = f"Platform: {post['platform']}\nUsername: @{post['username']}\nPrice: {post['price']}\nDetails: {post['details']}"
+                msg = f"Username: @{post['username']}\nPrice: {post['price']}\nDetails: {post['details']}"
                 markup = types.InlineKeyboardMarkup()
-                markup.add(types.InlineKeyboardButton("Contact Seller", url=f"https://t.me/{post['username']}"))
+                markup.add(types.InlineKeyboardButton("Contact Seller", url=f"https://t.me/{post['sender_username']}"))
+                markup.add(types.InlineKeyboardButton("Trusted Admin (TA)", callback_data="show_ta"))
+                
                 photo_id = PLATFORM_PHOTOS.get(post['platform'])
                 if photo_id:
                     bot.send_photo(CHANNEL_ID, photo_id, caption=msg, reply_markup=markup)
                 else:
                     bot.send_message(CHANNEL_ID, msg, reply_markup=markup)
-                bot.edit_message_text("Post published.", chat_id, call.message.message_id)
+                
+                bot.edit_message_text("Post published to channel.", chat_id, call.message.message_id)
                 del user_pending_posts[target_id]
         
         elif call.data == "reject":
             bot.edit_message_text("Post rejected.", chat_id, call.message.message_id)
-
+            
+        elif call.data == "show_ta":
+            ta_text = "Trusted Admin (TA):\n\n1. @wwwrw\n2. @wrwww\n3. @is_smaa"
+            bot.answer_callback_query(call.id, text=ta_text, show_alert=True)
+            
     except Exception as e:
         print(f"Error: {e}")
 
 def process_details(message):
     try:
-        if ":" not in message.text:
-            bot.reply_to(message, "Error: Use format Username:Price:Details")
-            bot.register_next_step_handler(message, process_details)
-            return
-
         parts = message.text.split(":")
-        username, price, details = parts[0], parts[1], parts[2]
+        if len(parts) < 3: raise ValueError
+        username, price, details = parts[0].strip(), parts[1].strip(), parts[2].strip()
         chat_id = message.chat.id
         
-        user_pending_posts[chat_id].update({"username": username.replace("@", ""), "price": price, "details": details})
+        user_pending_posts[chat_id].update({
+            "username": username.replace("@", ""), 
+            "price": price, 
+            "details": details,
+            "sender_username": message.from_user.username
+        })
         
         markup = types.InlineKeyboardMarkup()
         markup.add(types.InlineKeyboardButton("Approve", callback_data=f"approve_{chat_id}"))
         markup.add(types.InlineKeyboardButton("Reject", callback_data="reject"))
         
-        admin_msg = f"New Post Request:\nPlatform: {user_pending_posts[chat_id]['platform']}\nUsername: {username}\nPrice: {price}\nDetails: {details}"
+        admin_msg = f"New Post Request:\nPlatform: {user_pending_posts[chat_id]['platform']}\nUsername: @{username}\nPrice: {price}\nDetails: {details}\nFrom: @{message.from_user.username}"
         bot.send_message(ADMIN_ID, admin_msg, reply_markup=markup)
         bot.reply_to(message, "Your post is sent to admin.")
-    except Exception as e:
-        bot.reply_to(message, "Error. Use format: Username:Price:Details")
+    except:
+        bot.reply_to(message, "Error! Use format: Username:Price:Details")
         bot.register_next_step_handler(message, process_details)
 
 print("Bot is running...")
